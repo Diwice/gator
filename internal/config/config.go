@@ -31,10 +31,14 @@ func Read() (Config, error) {
 	return res_cfg, nil
 }
 
-func (c *Config) SetUser(new_name string) {
+func (c *Config) SetUser(new_name string) error {
 	c.Curr_Username = new_name
 
-	write(*c)
+	if err := write(*c); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getConfigFilePath() (string, error) {
