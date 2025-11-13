@@ -67,8 +67,7 @@ func main() {
 	
 	os_args := os.Args
 	if len(os_args) < 2 {
-		fmt.Println("Expected arguments")
-		os.Exit(1)
+		log.Fatal(fmt.Errorf("Expected arguments"))
 	} 
 
 	var cmnd command
@@ -86,8 +85,7 @@ func main() {
 
 	fnc, ok := new_cmds.cmd[cmnd.name];
 	if !ok {
-		fmt.Println("Command doesn't exist")
-		os.Exit(1)
+		log.Fatal(fmt.Errorf("Command doesn't exist"))
 	}
 
 	if err := fnc(&new_state, cmnd); err != nil {
