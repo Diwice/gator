@@ -4,10 +4,18 @@ import (
 	"os"
 	"fmt"
 	"log"
-	"internal/config"
+	"time"
+	"context"
+	"database/sql"
+	"gator/internal/config"
+	"gator/internal/database"
+	"github.com/google/uuid"
+
+	_ "github.com/lib/pq"
 )
 
 type state struct {
+	db  *database.Queries
 	cfg *config.Config
 }
 
@@ -43,28 +51,52 @@ func handlerLogins(s *state, cmd command) error {
 		return fmt.Errorf("Expected username")
 	}
 
+	if _, err := s.db.GetUser(context.Background(), cmd.args[0]); err != nil {
+		return err
+	}
+
 	if err := s.cfg.SetUser(cmd.args[0]); err != nil {
 		return err
 	}
 
-	fmt.Println("User has been set.")
+	fmt.Println("User has been set to -", cmd.args[0])
 
 	return nil
 }
 
-
-
-func main() {
-	new_cfg, err := config.Read()
-	if err != nil {
-		log.Fatal(err)
+func handlerRegisters(s *state, cmd command) error {
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("Expected username")
 	}
 
-	new_state := state{&new_cfg}
+	curr_time := time.Now()
 
-	new_cmds := commands{}
-	new_cmds.register("login", handlerLogins)
-	
+	user_params := database.CreateUserParams{
+		ID: uuid.New(),
+		CreatedAt: curr_time,
+		UpdatedAt: curr_time,
+		Name: cmd.args[0],
+	}
+
+	if _, err := s.db.CreateUser(context.Background(), user_params); err != nil {
+		return err
+	}
+
+	if err := s.cfg.SetUser(cmd.args[0]); err != nil {
+		return err
+	}
+
+	fmt.Println("Successfully created and logged into user :","\nid:", user_params.ID, "\ncreated_at:", user_params.CreatedAt, "\nupdated_at:", user_params.UpdatedAt, "\nname:", user_params.Name)
+
+	return nil
+}
+
+func (c *commands) register_all_cmds() {
+	c.register("login", handlerLogins)
+	c.register("register", handlerRegisters)
+}
+
+func handle_input(new_cmds *commands) (func(*state, command) error, command) {
 	os_args := os.Args
 	if len(os_args) < 2 {
 		log.Fatal(fmt.Errorf("Expected arguments"))
@@ -87,6 +119,29 @@ func main() {
 	if !ok {
 		log.Fatal(fmt.Errorf("Command doesn't exist"))
 	}
+
+	return fnc, cmnd
+}
+
+func main() {
+	new_cfg, err := config.Read()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	db, err := sql.Open("postgres", new_cfg.DB_URL)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dbQueries := database.New(db)
+
+	new_state := state{dbQueries, &new_cfg}
+
+	new_cmds := commands{}
+	new_cmds.register_all_cmds()
+	
+	fnc, cmnd := handle_input(&new_cmds)
 
 	if err := fnc(&new_state, cmnd); err != nil {
 		log.Fatal(err)
