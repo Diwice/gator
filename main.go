@@ -91,9 +91,20 @@ func handlerRegisters(s *state, cmd command) error {
 	return nil
 }
 
+func handlerResets(s *state, cmd command) error {
+	if err := s.db.ResetUsers(context.Background()); err != nil {
+		return err
+	}
+
+	fmt.Println("Successfully resetted the users table")
+
+	return nil
+}
+
 func (c *commands) register_all_cmds() {
 	c.register("login", handlerLogins)
 	c.register("register", handlerRegisters)
+	c.register("reset", handlerResets)
 }
 
 func handle_input(new_cmds *commands) (func(*state, command) error, command) {
