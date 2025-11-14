@@ -101,10 +101,34 @@ func handlerResets(s *state, cmd command) error {
 	return nil
 }
 
+func handlerUsers(s *state, cmd command) error {
+	users, err := s.db.GetUsers(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if len(users) == 0 {
+		fmt.Println("No users registered!")
+		return nil
+	}
+
+	for _, v := range users {
+		if v == s.cfg.Curr_Username {
+			fmt.Printf("* %s (current)\n", v)
+			continue
+		}
+
+		fmt.Printf("* %s\n", v)
+	}
+
+	return nil
+}
+
 func (c *commands) register_all_cmds() {
 	c.register("login", handlerLogins)
 	c.register("register", handlerRegisters)
 	c.register("reset", handlerResets)
+	c.register("users", handlerUsers)
 }
 
 func handle_input(new_cmds *commands) (func(*state, command) error, command) {

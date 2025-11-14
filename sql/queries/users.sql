@@ -13,3 +13,6 @@ FROM users
 WHERE name = $1;
 -- name: ResetUsers :exec
 TRUNCATE TABLE users;
+-- name: GetUsers :many
+SELECT name
+FROM users;
