@@ -236,7 +236,7 @@ func handlerFollow(s *state, cmd command, user database.User) error {
 		return err
 	}
 
-	fmt.Printf("Successfully followed feed - %s (URL:%s); as user - %s\n", followed.FeedName, cmd.args[0], followed.UserName)
+	fmt.Printf("Successfully followed feed - %s (URL:%s) ; as user - %s\n", followed.FeedName, cmd.args[0], followed.UserName)
 
 	return nil
 }
@@ -251,6 +251,30 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 	for _, v := range feeds {
 		fmt.Printf("Feed - %s ; ID - %d\n", v.FeedName, v.FeedID)
 	}
+
+	return nil
+}
+
+func handlerUnfollow(s *state, cmd command, user database.User) error {
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("Expected URL")
+	}
+
+	feed, err := s.db.GetFeedByURL(context.Background(), clean_input(cmd.args[0]))
+	if err != nil {
+		return err 
+	}
+
+	unf_struct := database.UnfollowFeedParams{
+		UserID: user.ID,
+		FeedID: feed.ID,
+	}
+
+	if err := s.db.UnfollowFeed(context.Background(), unf_struct); err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully unfollowed feed - %s (URL:%s) ; as user - %s\n", feed.Name, feed.Url, user.Name)
 
 	return nil
 }
@@ -276,6 +300,7 @@ func (c *commands) register_all_cmds() {
 	c.register("feeds", handlerFeeds)
 	c.register("follow", middlewareLoggedIn(handlerFollow))
 	c.register("following", middlewareLoggedIn(handlerFollowing))
+	c.register("unfollow", middlewareLoggedIn(handlerUnfollow))
 }
 
 func handle_input(new_cmds *commands) (func(*state, command) error, command) {
