@@ -187,6 +187,24 @@ func handlerAddFeed(s *state, cmd command) error {
 	return nil
 }
 
+func handlerFeeds(s *state, cmd command) error {
+	feeds, err := s.db.GetFeeds(context.Background())
+	if err != nil {
+		return err
+	}
+
+	for _, v := range feeds {
+		user, err := s.db.GetUserByID(context.Background(), v.UserID)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("#%v : Name - %s ; URL - %s ; User - %s (UID:%v)\n", v.ID, v.Name, v.Url, user.Name, v.UserID)
+	}
+
+	return nil
+}
+
 func (c *commands) register_all_cmds() {
 	c.register("login", handlerLogins)
 	c.register("register", handlerRegisters)
@@ -194,6 +212,7 @@ func (c *commands) register_all_cmds() {
 	c.register("users", handlerUsers)
 	c.register("agg", handlerAgg)
 	c.register("addfeed", handlerAddFeed)
+	c.register("feeds", handlerFeeds)
 }
 
 func handle_input(new_cmds *commands) (func(*state, command) error, command) {
