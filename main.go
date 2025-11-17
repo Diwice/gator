@@ -158,7 +158,7 @@ func clean_input(s string) string {
 
 func handlerAddFeed(s *state, cmd command) error {
 	if len(cmd.args) < 2 {
-		return fmt.Errorf("Expected name and url of the feed")
+		return fmt.Errorf("Expected name and URL of the feed")
 	}
 	
 	url, name := clean_input(cmd.args[1]), clean_input(cmd.args[0])
@@ -178,11 +178,23 @@ func handlerAddFeed(s *state, cmd command) error {
 		UserID:    user.ID,
 	}
 
-	if _, err := s.db.CreateFeed(context.Background(), feed); err != nil {
+	new_feed, err := s.db.CreateFeed(context.Background(), feed)
+	if err != nil {
 		return err
 	}
 
-	fmt.Println("Successfully created feed -", name, "; from -", url)
+	follow_struct := database.CreateFeedFollowParams{
+		CreatedAt: c_time,
+		UpdatedAt: c_time,
+		UserID:    user.ID,
+		FeedID:    new_feed.ID,
+	}
+
+	if _, err := s.db.CreateFeedFollow(context.Background(), follow_struct); err != nil {
+		return err
+	}
+
+	fmt.Println("Successfully created and followed feed -", name, "; from -", url)
 
 	return nil
 }
@@ -205,6 +217,59 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
+func handlerFollow(s *state, cmd command) error {
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("Expected URL")
+	}
+
+	c_time := time.Now()
+
+	user, err := s.db.GetUser(context.Background(), s.cfg.Curr_Username)
+	if err != nil {
+		return err
+	}
+
+	feed, err := s.db.GetFeedByURL(context.Background(), clean_input(cmd.args[0]))
+	if err != nil {
+		return err 
+	}
+
+	follow_struct := database.CreateFeedFollowParams{
+		CreatedAt: c_time,
+		UpdatedAt: c_time, 
+		UserID:    user.ID,
+		FeedID:    feed.ID,
+	}
+
+	followed, err := s.db.CreateFeedFollow(context.Background(), follow_struct)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully followed feed - %s (URL:%s); as user - %s\n", followed.FeedName, cmd.args[0], followed.UserName)
+
+	return nil
+}
+
+func handlerFollowing(s *state, cmd command) error {
+	user, err := s.db.GetUser(context.Background(), s.cfg.Curr_Username)
+	if err != nil {
+		return err
+	}
+
+	feeds, err := s.db.GetFeedFollowsForUser(context.Background(), user.ID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Currently followed feeds on User - %s (ID:%v)\n", user.Name, user.ID)
+	for _, v := range feeds {
+		fmt.Printf("Feed - %s ; ID - %d\n", v.FeedName, v.FeedID)
+	}
+
+	return nil
+}
+
 func (c *commands) register_all_cmds() {
 	c.register("login", handlerLogins)
 	c.register("register", handlerRegisters)
@@ -213,6 +278,8 @@ func (c *commands) register_all_cmds() {
 	c.register("agg", handlerAgg)
 	c.register("addfeed", handlerAddFeed)
 	c.register("feeds", handlerFeeds)
+	c.register("follow", handlerFollow)
+	c.register("following", handlerFollowing)
 }
 
 func handle_input(new_cmds *commands) (func(*state, command) error, command) {
