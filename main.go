@@ -73,10 +73,10 @@ func handlerRegisters(s *state, cmd command) error {
 	curr_time := time.Now()
 
 	user_params := database.CreateUserParams{
-		ID: uuid.New(),
+		ID:        uuid.New(),
 		CreatedAt: curr_time,
 		UpdatedAt: curr_time,
-		Name: cmd.args[0],
+		Name:      cmd.args[0],
 	}
 
 	if _, err := s.db.CreateUser(context.Background(), user_params); err != nil {
@@ -126,14 +126,63 @@ func handlerUsers(s *state, cmd command) error {
 }
 
 func handlerAgg(s *state, cmd command) error {
+	var url string
+
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("Expected arguments")
+	} else if len(cmd.args) == 1 {
+		url = cmd.args[0]
+	} else {
+		url = cmd.args[1]
+	}
+
 	ctx := context.Background()
 
-	res, err := rss.FetchFeed(&ctx, "https://www.wagslane.dev/index.xml")
+	res, err := rss.FetchFeed(&ctx, url)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println(res)
+
+	return nil
+}
+
+func clean_input(s string) string {
+	if s[0] == '\'' || s[0] == '"' {
+		return s[1:len(s)-1]
+	}
+
+	return s
+}
+
+func handlerAddFeed(s *state, cmd command) error {
+	if len(cmd.args) < 2 {
+		return fmt.Errorf("Expected name and url of the feed")
+	}
+	
+	url, name := clean_input(cmd.args[1]), clean_input(cmd.args[0])
+
+	user, err := s.db.GetUser(context.Background(), s.cfg.Curr_Username)
+	if err != nil {
+		return err
+	}
+
+	c_time := time.Now()
+
+	feed := database.CreateFeedParams{
+		CreatedAt: c_time,
+		UpdatedAt: c_time, 
+		Name:      name,
+		Url:       url,
+		UserID:    user.ID,
+	}
+
+	if _, err := s.db.CreateFeed(context.Background(), feed); err != nil {
+		return err
+	}
+
+	fmt.Println("Successfully created feed -", name, "; from -", url)
 
 	return nil
 }
@@ -144,6 +193,7 @@ func (c *commands) register_all_cmds() {
 	c.register("reset", handlerResets)
 	c.register("users", handlerUsers)
 	c.register("agg", handlerAgg)
+	c.register("addfeed", handlerAddFeed)
 }
 
 func handle_input(new_cmds *commands) (func(*state, command) error, command) {
