@@ -7,6 +7,7 @@ import (
 	"time"
 	"context"
 	"database/sql"
+	"gator/internal/rss"
 	"gator/internal/config"
 	"gator/internal/database"
 	"github.com/google/uuid"
@@ -124,11 +125,25 @@ func handlerUsers(s *state, cmd command) error {
 	return nil
 }
 
+func handlerAgg(s *state, cmd command) error {
+	ctx := context.Background()
+
+	res, err := rss.FetchFeed(&ctx, "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(res)
+
+	return nil
+}
+
 func (c *commands) register_all_cmds() {
 	c.register("login", handlerLogins)
 	c.register("register", handlerRegisters)
 	c.register("reset", handlerResets)
 	c.register("users", handlerUsers)
+	c.register("agg", handlerAgg)
 }
 
 func handle_input(new_cmds *commands) (func(*state, command) error, command) {
