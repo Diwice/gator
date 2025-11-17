@@ -156,17 +156,12 @@ func clean_input(s string) string {
 	return s
 }
 
-func handlerAddFeed(s *state, cmd command) error {
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.args) < 2 {
 		return fmt.Errorf("Expected name and URL of the feed")
 	}
 	
 	url, name := clean_input(cmd.args[1]), clean_input(cmd.args[0])
-
-	user, err := s.db.GetUser(context.Background(), s.cfg.Curr_Username)
-	if err != nil {
-		return err
-	}
 
 	c_time := time.Now()
 
@@ -217,17 +212,12 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollow(s *state, cmd command) error {
+func handlerFollow(s *state, cmd command, user database.User) error {
 	if len(cmd.args) == 0 {
 		return fmt.Errorf("Expected URL")
 	}
 
 	c_time := time.Now()
-
-	user, err := s.db.GetUser(context.Background(), s.cfg.Curr_Username)
-	if err != nil {
-		return err
-	}
 
 	feed, err := s.db.GetFeedByURL(context.Background(), clean_input(cmd.args[0]))
 	if err != nil {
@@ -251,12 +241,7 @@ func handlerFollow(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollowing(s *state, cmd command) error {
-	user, err := s.db.GetUser(context.Background(), s.cfg.Curr_Username)
-	if err != nil {
-		return err
-	}
-
+func handlerFollowing(s *state, cmd command, user database.User) error {
 	feeds, err := s.db.GetFeedFollowsForUser(context.Background(), user.ID)
 	if err != nil {
 		return err
@@ -270,16 +255,27 @@ func handlerFollowing(s *state, cmd command) error {
 	return nil
 }
 
+func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) error) func(*state, command) error {
+	return func(s *state, c command) error {
+		user, err := s.db.GetUser(context.Background(), s.cfg.Curr_Username)
+		if err != nil {
+			return err
+		}
+
+		return handler(s, c, user)
+	}
+}
+
 func (c *commands) register_all_cmds() {
 	c.register("login", handlerLogins)
 	c.register("register", handlerRegisters)
 	c.register("reset", handlerResets)
 	c.register("users", handlerUsers)
 	c.register("agg", handlerAgg)
-	c.register("addfeed", handlerAddFeed)
+	c.register("addfeed", middlewareLoggedIn(handlerAddFeed))
 	c.register("feeds", handlerFeeds)
-	c.register("follow", handlerFollow)
-	c.register("following", handlerFollowing)
+	c.register("follow", middlewareLoggedIn(handlerFollow))
+	c.register("following", middlewareLoggedIn(handlerFollowing))
 }
 
 func handle_input(new_cmds *commands) (func(*state, command) error, command) {
