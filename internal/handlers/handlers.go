@@ -118,25 +118,63 @@ func handlerUsers(s *state.State, cmd Command) error {
 	return nil
 }
 
-func handlerAgg(s *state.State, cmd Command) error {
-	var url string
+func scrapeFeeds(s *state.State, cmd Command) error {
+	fmt.Println("Getting the next feed to be fetched...")
 
-	if len(cmd.args) == 0 {
-		return fmt.Errorf("Expected arguments")
-	} else if len(cmd.args) == 1 {
-		url = cmd.args[0]
-	} else {
-		url = cmd.args[1]
-	}
-
-	ctx := context.Background()
-
-	res, err := rss.FetchFeed(&ctx, url)
+	feed, err := s.DB.GetNextFeedToFetch(context.Background())
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(res)
+	c_time := time.Now()
+
+	fmt.Printf("Fetching the feed - %s\n", feed.Name)
+
+	feed_params := database.MarkFeedFetchedParams{
+		ID:        feed.ID,
+		UpdatedAt: c_time,
+	}
+
+	if err := s.DB.MarkFeedFetched(context.Background(), feed_params); err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+
+	res, err := rss.FetchFeed(&ctx, feed.Url)
+	if err != nil {
+		return err
+	}
+
+	for _, v := range res.Channel.Item {
+		fmt.Println(v.Title)
+	}
+
+	return nil
+}
+
+func handlerAgg(s *state.State, cmd Command) error {
+	var b_time time.Duration
+
+	if len(cmd.args) == 0 {
+		return fmt.Errorf("Expected arguments")
+	} else if len(cmd.args) == 1 {
+		c_time, err := time.ParseDuration(cmd.args[0]) 
+		if err != nil {
+			return err
+		}
+
+		b_time = c_time
+	} else {
+		return fmt.Errorf("Too many arguments, expected 1: time")
+	}
+
+	fmt.Printf("Collecting feeds every %v\n", b_time)
+
+	ticker := time.NewTicker(b_time)
+	for range ticker.C {
+		scrapeFeeds(s, cmd)
+	}
 
 	return nil
 }
