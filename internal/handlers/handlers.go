@@ -90,7 +90,7 @@ func handlerResets(s *state.State, cmd Command) error {
 		return err
 	}
 
-	fmt.Println("Successfully resetted the users table")
+	fmt.Println("Successfully cleaned all tables in the database")
 
 	return nil
 }
