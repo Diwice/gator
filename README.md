@@ -28,18 +28,23 @@ you have to insert own user data (default user is postgres, and there is no pass
 
 ## Usage
 After building the app, use it with any of the following commands :
-- "login <user_name>" to change the current user
-- "register <user_name>" to register a new user 
-- "reset" to remove all entries from db
-- "users" to display all users and the current user
-- "agg <time>" to aggregate the posts with given time range between requests
-- "addfeed "<feed_name>" "<feed_url>"" to add a new feed entry
-- "feeds" to display all feeds
-- "follow <feed_url>" to follow the feed from current user
-- "following" to display followed feeds as current user
-- "unfollow <feed_url>" to unfollow the feed as current user
-- "browse <limit>" to browse the aggregated posts from followed feeds. Limited to 2 if not provided
+- 'login <user_name>' | to change the current user
+- 'register <user_name>' | to register a new user 
+- 'reset' | to remove all entries from db
+- 'users' | to display all users and the current user
+- 'agg <time>' | to aggregate the posts with given time range between requests
+- 'addfeed "<feed_name>" "<feed_url>"' | to add a new feed entry
+- 'feeds' | to display all feeds
+- 'follow <feed_url>' | to follow the feed from current user
+- 'following' | to display followed feeds as current user
+- 'unfollow <feed_url>' | to unfollow the feed as current user
+- 'browse <limit>' | to browse the aggregated posts from followed feeds. Limited to 2 if not provided
+
 Example :
 ```
 ./gator register Cathy
+
+./gator addfeed "Boot" "https://blog.boot.dev/index.xml"
+
+./gator agg 30s
 ```
